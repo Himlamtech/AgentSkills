@@ -1,69 +1,51 @@
 ---
 name: code-discipline
 description: >
-  Core coding standards enforced across all agent interactions. Covers SOLID principles,
-  file ownership, abstraction rules, comment conventions, and error handling.
+  Core coding standards: SOLID, file ownership, abstraction rules, comment conventions,
+  error handling, and import hygiene. Enforced across all interactions.
 inclusion: always
 priority: high
 ---
 
 # Code Discipline
 
-## SOLID Principles
+## Ownership Rules
 
-- One responsibility per module, class, and function.
-- Extend existing owners instead of splitting behavior across parallel paths.
-- Depend on stable contracts, not concrete implementation details.
-- Prefer composition over inheritance unless the existing hierarchy is the owning contract.
-- Do not introduce abstractions without a second concrete caller.
+1. Before creating a new file → find the existing owner and modify it.
+2. Before creating a new function → find one that can be extended.
+3. Before creating a new class → check if an existing class can absorb the behavior.
+4. If new creation is necessary → state why no existing owner fits (in a comment or response).
 
-## File and Function Ownership
+## Abstraction Gate
 
-- Before creating a new file, find the file that owns this responsibility and modify it.
-- Before creating a new function, find the function that can be extended and extend it.
-- Before creating a new class, check whether an existing class can absorb this behavior.
-- When creating something new is genuinely necessary, state the reason explicitly.
+Do NOT introduce interface, base class, registry, factory, or strategy unless:
+- A second concrete caller already exists in this task or codebase.
+- You can name that second caller explicitly.
 
-## No Over-Engineering
-
-- Do not introduce an abstraction (interface, base class, registry, factory, strategy) unless a second concrete caller already exists.
-- Do not add async, caching, retry, or event indirection without a named, observable failure mode it prevents.
-- If the simplest direct implementation works, ship it.
+One caller = no abstraction. Ship direct code.
 
 ## Compat Surfaces
 
-Every compat surface must have:
 ```python
 # COMPAT: <reason> -- DELETE after <milestone or ticket>
 ```
-Once tests pass, delete the compat surface immediately.
+- Every compat surface must have a concrete removal condition.
+- Once tests pass without it → delete immediately.
+- "Remove later" is not acceptable.
 
 ## Comments and Docstrings
 
-- Every public class, function, and method must have a docstring.
-- Docstrings explain: purpose, main inputs, output/side effect.
-- Inline comments explain WHY, not WHAT.
-- No banner comments, no noise, no restating the code.
-
-```python
-# Good — explains constraint
-# Retry up to 3x with backoff — downstream has transient 503s under load.
-# Do not increase beyond 3: SLA requires <2s p95 response time.
-async def fetch_with_retry(url: str) -> Response: ...
-
-# Bad — restates the code
-# This function fetches a URL and retries on failure.
-async def fetch_with_retry(url: str) -> Response: ...
-```
+- Every public class/function/method → docstring (purpose, inputs, output).
+- Inline comments → explain WHY or what constraint, never restate WHAT.
+- Minimum words for a new engineer to understand intent without reading the body.
 
 ## Error Handling
 
-- No broad `except Exception` without a clear handling strategy.
-- No silent swallowing of errors.
-- Fail explicitly with actionable error messages.
-- Validate inputs at entry boundaries.
+- No broad `except Exception` without explicit handling strategy.
+- No silent swallowing — always log or re-raise.
+- Validate inputs at entry boundaries with actionable error messages.
 
-## Import Rules
+## Import Hygiene
 
 - No wildcard imports.
 - No circular imports.

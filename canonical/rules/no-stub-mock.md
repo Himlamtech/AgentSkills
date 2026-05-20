@@ -2,73 +2,44 @@
 name: no-stub-mock
 description: >
   Prevent agent from generating placeholder code, stubs, mocks, fake implementations,
-  or workaround functions that bypass real logic. This is the primary anti-hallucination
-  and anti-reward-hacking guardrail.
+  or workaround functions that bypass real logic. Primary anti-hallucination guardrail.
 inclusion: always
 priority: critical
 ---
 
 # No Stub, Mock, or Placeholder Code
 
-## Absolute Prohibitions
+## Absolute Prohibitions (in production code)
 
-You are FORBIDDEN from generating any of the following in production code:
-
-1. **Stub functions** — functions that return hardcoded values, empty results, or `NotImplementedError`
-2. **Mock objects** — fake implementations that simulate real behavior
-3. **Placeholder logic** — `TODO`, `FIXME`, `pass`, or empty function bodies
-4. **Workaround functions** — `looks_like_*`, `maybe_*`, `try_to_*` patterns that guess instead of solving
-5. **Rule-based fakes** — `if TEST_MODE: return fake_data` patterns in production code
-6. **Silent fallbacks** — catching exceptions and returning default values without logging or re-raising
+1. **Stub functions** — returning hardcoded values, empty results, or `NotImplementedError` in concrete implementations
+2. **Mock objects** — fake implementations that simulate real behavior outside test files
+3. **Placeholder logic** — `TODO`, `FIXME`, or empty function bodies in shipped code
+4. **Guessing functions** — `looks_like_*`, `maybe_*`, `try_to_*` patterns that guess instead of solving
+5. **Rule-based fakes** — `if TEST_MODE: return fake_data` in production modules
+6. **Silent fallbacks** — catching exceptions and returning defaults without logging or re-raising
 7. **Fabricated APIs** — calling functions, methods, or endpoints that do not exist in the codebase
 
-## When You Cannot Solve a Problem
+## Exempt Patterns
 
-If you genuinely cannot implement the requested behavior:
+These are NOT violations:
+- `@abstractmethod` + `raise NotImplementedError` in abstract base classes
+- `pass` in `__init__.py` (empty package marker)
+- `pass` in protocol/interface definitions
+- `...` (Ellipsis) in type stub files (`.pyi`)
+- Test doubles in test files (`tests/`, `test_*.py`, `*_test.py`)
+
+## When You Cannot Solve a Problem
 
 1. **Say so explicitly** — "I cannot implement this because [specific reason]"
 2. **Explain what's missing** — which dependency, context, or information is needed
 3. **Propose alternatives** — suggest a different approach that IS implementable
 4. **Never fake it** — do not generate code that appears to work but doesn't
 
-## Detection Patterns
+## Self-Check Before Presenting Code
 
-The following patterns in generated code indicate a violation:
+- Does every concrete function have a real implementation?
+- Are there any function names suggesting uncertainty (looks_like, maybe, try_to)?
+- Does any function return a hardcoded value that should come from computation?
+- Is there any `pass` or `TODO` in a concrete (non-abstract) function body?
 
-```python
-# VIOLATIONS — never generate these:
-def looks_like_valid(x): ...          # Guessing function
-def maybe_parse(data): ...            # Uncertain implementation
-return None  # TODO: implement        # Placeholder
-pass                                  # Empty body
-raise NotImplementedError             # Stub
-if os.getenv("TEST"): return {}       # Fake in production
-except Exception: return default      # Silent swallow
-```
-
-## What To Do Instead
-
-```python
-# CORRECT — fail explicitly when something is wrong:
-def parse_document(data: bytes) -> Document:
-    """Parse raw bytes into a Document. Raises ValueError if format is unrecognized."""
-    if not data:
-        raise ValueError("Cannot parse empty data")
-    # Real implementation here — not a placeholder
-    ...
-
-# CORRECT — use the actual dependency:
-def get_user(user_id: str) -> User:
-    """Fetch user from repository. Raises NotFoundError if user does not exist."""
-    return self.repo.find(user_id)
-```
-
-## Verification
-
-After generating code, self-check:
-- Does every function have a real implementation that produces correct output?
-- Are there any functions whose name suggests uncertainty (looks_like, maybe, try_to)?
-- Does any function return a hardcoded value that should come from actual computation?
-- Is there any `pass`, `TODO`, or `NotImplementedError` in the output?
-
-If any check fails, rewrite before presenting the code.
+If any check fails → rewrite before presenting.
